@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080, initial-scale=1">
+<title>MyTivi</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="stage">
+
+  <!-- Một thẻ video duy nhất: lúc nằm trong khung xem trước, lúc phủ toàn màn hình -->
+  <video id="vid" class="off" autoplay playsinline></video>
+
+  <!-- ============ Màn hình chính: xem trước + bảng lịch ============ -->
+  <section id="browse" class="screen hide">
+    <div id="pv">
+      <div id="pvMsg" class="pv-msg"></div>
+      <i id="pvSpin" class="spin hide"></i>
+      <div class="pv-border"></div>
+    </div>
+
+    <div id="info">
+      <div id="infoEmpty" class="dim i-empty">Lướt qua danh sách kênh để xem trước.</div>
+      <div id="infoBody" class="hide">
+        <div id="iTitle" class="i-title"></div>
+        <div id="iTime" class="i-time hide">
+          <span id="iRange"></span>
+          <span id="iLive" class="i-live hide"><span class="bar"><i id="iBar"></i></span><span id="iLeft" class="dim"></span></span>
+        </div>
+        <div id="iChan" class="i-chan dim"></div>
+      </div>
+      <div class="i-hint dim">OK: Toàn màn hình &nbsp;·&nbsp; Trái: Nhóm kênh &nbsp;·&nbsp; Vàng: Yêu thích &nbsp;·&nbsp; Đỏ: Làm mới &nbsp;·&nbsp; Xanh dương: Cài đặt</div>
+    </div>
+
+    <div id="tl">
+      <div id="tlDate" class="dim"></div>
+      <div id="tlClip">
+        <div id="tlStrip"></div>
+        <div id="tlArrow"></div>
+      </div>
+    </div>
+    <div id="tlLine"></div>
+
+    <div id="guide">
+      <div id="guideInner"></div>
+      <div id="guideEmpty" class="dim hide"></div>
+    </div>
+
+    <!-- Ngăn nhóm kênh trượt từ bên trái -->
+    <aside id="drawer">
+      <div class="dg-title">Nhóm kênh</div>
+      <div class="dg-hint dim">Bấm Phải để quay lại danh sách kênh</div>
+      <div id="dgSearch" class="dg-search"><input id="dgQuery" type="text" placeholder="Tìm kênh…" autocomplete="off" spellcheck="false"></div>
+      <div id="dgList"></div>
+      <div class="dg-foot">
+        <div class="dg-line"></div>
+        <div id="dgRefresh" class="dg-btn">Làm mới</div>
+        <div id="dgSettings" class="dg-btn">Cài đặt</div>
+        <div id="dgLoad" class="dg-st dim hide"><i class="spin sm"></i>&nbsp; Đang tải…</div>
+        <div id="dgStatus" class="dg-st dim"></div>
+        <div id="dgVer" class="dg-st dim"></div>
+        <div id="dgErr" class="dg-st err"></div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ============ Xem kênh toàn màn hình ============ -->
+  <section id="watch" class="screen hide">
+    <i id="wSpin" class="spin big hide"></i>
+    <div id="wErr" class="w-err hide"></div>
+
+    <div id="infoBar" class="infobar">
+      <div class="ib-row">
+        <div id="ibNum" class="ib-num"></div>
+        <img id="ibLogo" class="ib-logo" alt="">
+        <div class="ib-main">
+          <div id="ibName" class="ib-name"></div>
+          <div id="ibNow" class="ib-now"></div>
+          <div id="ibBarWrap" class="bar wide"><i id="ibBar"></i></div>
+          <div id="ibNext" class="ib-next dim"></div>
+          <div id="ibBadges" class="badges"></div>
+        </div>
+        <div class="ib-clock"><div id="ibTime" class="ib-time"></div><div id="ibDate" class="dim"></div></div>
+      </div>
+    </div>
+
+    <div id="chPanel" class="ch-panel hide">
+      <div id="chView"><div id="chInner"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ Cài đặt ============ -->
+  <section id="setup" class="screen hide">
+    <div class="su">
+      <h1>Cài đặt MyTivi</h1>
+      <div id="suVer" class="dim su-ver"></div>
+      <div class="dim su-sub">Dán link danh sách kênh (.m3u) hoặc một luồng .m3u8</div>
+
+      <div id="fUrl" class="field">
+        <label>Link playlist (.m3u) hoặc luồng .m3u8</label>
+        <input id="suUrl" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="fEpg" class="field">
+        <label>Link EPG – lịch phát sóng XMLTV (không bắt buộc)</label>
+        <input id="suEpg" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="fProxy" class="field">
+        <label>Proxy CORS (không bắt buộc; chỉ cần khi nguồn không tải được – ví dụ https://proxy.example/?url=)</label>
+        <input id="suProxy" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="suErr" class="err su-err"></div>
+      <div class="su-btns">
+        <div id="bSave" class="btn">Lưu</div>
+        <div id="bCancel" class="btn">Hủy</div>
+      </div>
+      <div class="dim su-note">Chỉ dùng với nội dung bạn có quyền xem.</div>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/lib/pako.es5.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/m3u.js"></script>
+<script src="js/guide.js"></script>
+<script src="js/epg.js"></script>
+<script src="js/store.js"></script>
+<script src="js/net.js"></script>
+<script src="js/data.js"></script>
+<script src="js/player.js"></script>
+<script src="js/vlist.js"></script>
+<script src="js/browse.js"></script>
+<script src="js/watch.js"></script>
+<script src="js/setup.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

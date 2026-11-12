@@ -1,0 +1,5 @@
+.DS_Store
+dist/
+shots/
+__pycache__/
+node_modules/
