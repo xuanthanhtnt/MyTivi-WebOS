@@ -6,7 +6,7 @@
 
   /**
    * inner: phần tử chứa các hàng (position:absolute; có transition transform trong CSS)
-   * rowH, viewH: chiều cao một hàng / chiều cao vùng nhìn thấy (px)
+   * rowH, viewH: chiều cao một hàng / chiều cao vùng nhìn thấy (px thiết kế; viewH đổi được bằng setViewH)
    * make(i): trả về phần tử DOM của hàng thứ i
    */
   function VList(inner, rowH, viewH, make) {
@@ -26,6 +26,14 @@
     this.inner.style.height = (n * this.rowH) + 'px';
     this.top = Math.min(this.top, this.maxTop());
     this.clear();
+    this.render();
+  };
+
+  /** Đổi chiều cao vùng nhìn thấy (khi cửa sổ đổi kích thước / xoay màn hình). */
+  VList.prototype.setViewH = function (h) {
+    if (h === this.h) return;
+    this.h = h;
+    this.top = Math.min(this.top, this.maxTop());
     this.render();
   };
 

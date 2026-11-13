@@ -1,6 +1,6 @@
 {
   "id": "com.mytivi.webos",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "vendor": "MyTivi",
   "type": "web",
   "main": "index.html",
@@ -10,5 +10,6 @@
   "bgColor": "#0B1220",
   "resolution": "1920x1080",
   "disableBackHistoryAPI": true,
-  "appDescription": "Trình phát IPTV (M3U / HLS) cho webOS TV với bảng lịch phát sóng EPG."
+  "appDescription": "Trình phát IPTV (M3U / HLS) cho webOS TV với bảng lịch phát sóng EPG.",
+  "supportPortraitMode": true
 }

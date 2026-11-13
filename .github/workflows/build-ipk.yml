@@ -1,0 +1,54 @@
+name: Build IPK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Cần quyền ghi để tạo bản phát hành (Release) cho app tự cập nhật
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test
+        run: node --test test/core.test.js
+
+      # Kiểm tra appinfo.json, khớp phiên bản (appinfo.json / index.html / js/util.js) rồi đóng gói .ipk
+      - name: Build IPK
+        run: |
+          python3 tools/build_ipk.py --out dist
+          VER=$(python3 -c "import json; print(json.load(open('appinfo.json'))['version'])")
+          cp "dist/com.mytivi.webos_${VER}_all.ipk" MyTivi.ipk
+          echo "VER=$VER" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MyTivi-ipk
+          path: MyTivi.ipk
+
+      # Mỗi phiên bản mới (đổi "version" trong appinfo.json) tạo một Release "v<phiên bản>" kèm MyTivi.ipk.
+      # App trên TV đọc Release mới nhất để tự cập nhật; push mà không đổi phiên bản thì không tạo Release.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$VER"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Đã có bản phát hành $TAG, bỏ qua (muốn phát hành thì tăng version trong appinfo.json)."
+            exit 0
+          fi
+          git log -1 --pretty=%B | grep -v '^Co-Authored-By:' > notes.txt
+          gh release create "$TAG" MyTivi.ipk \
+            --target "$GITHUB_SHA" \
+            --title "MyTivi webOS $VER" \
+            --notes-file notes.txt \
+            --latest

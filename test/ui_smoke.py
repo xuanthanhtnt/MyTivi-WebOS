@@ -287,6 +287,21 @@ def main():
         check('quay về giữ nguyên luồng đang chạy trong khung xem trước', ev("document.getElementById('vid').className") == 'pv'
               and ev("MT.player.state") == 'playing')
 
+        print('== 10. Co giãn theo màn hình TV LG (FHD 1280x720, 1366x768, StanbyME dọc, 21:9, 4:3)')
+        rect = "(id => { const b = document.getElementById(id).getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map(Math.round); })"
+        for w, h, want in [(1280, 720, [1920, 1080]), (1366, 768, [1921, 1080]), (1080, 1920, [1280, 2276]),
+                           (2560, 1080, [2560, 1080]), (1024, 768, [1440, 1080]), (1920, 1080, [1920, 1080])]:
+            page.set_viewport_size({'width': w, 'height': h})
+            time.sleep(0.4)
+            L = ev('[MT.layout.W, MT.layout.H]')
+            check('%dx%d: bố cục %dx%d px thiết kế' % (w, h, want[0], want[1]), L == want, L)
+            check('%dx%d: video trùng khung xem trước' % (w, h), ev(rect + "('vid')") == ev(rect + "('pv')"))
+            check('%dx%d: không tràn khỏi màn hình' % (w, h),
+                  ev('[document.documentElement.scrollWidth, document.documentElement.scrollHeight]') == [w, h])
+            g = ev(rect + "('guide')")
+            check('%dx%d: bảng lịch lấp tới đáy màn hình' % (w, h), abs(g[1] + g[3] - h * (1 - 24 / L[1])) <= 2, g)
+            shot('10_layout_%dx%d' % (w, h))
+
         br.close()
 
     real = [e for e in errors if 'MEDIA_ELEMENT_ERROR' not in e and 'net::ERR' not in e]

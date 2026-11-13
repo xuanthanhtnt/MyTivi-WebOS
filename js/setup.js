@@ -1,21 +1,21 @@
-/* Cài đặt: link playlist (.m3u / .m3u8), link EPG, proxy CORS tùy chọn (chuyển từ SetupScreen.kt). */
+/* Cài đặt: link playlist (.m3u / .m3u8), link EPG, proxy CORS tùy chọn, phiên bản + kiểm tra cập nhật (chuyển từ SetupScreen.kt). */
 (function (root) {
   'use strict';
   var MT = root.MT, U = MT.util, D = MT.data, P = MT.player;
 
   var S = { items: [], i: 0, canCancel: false };
-  var E = {}, FIELDS = { fUrl: 'suUrl', fEpg: 'suEpg', fProxy: 'suProxy' };
+  var E = {}, FIELDS = { fUrl: 'suUrl', fEpg: 'suEpg', fProxy: 'suProxy' }, BUTTONS = { bSave: 1, bUpdate: 1, bCancel: 1 };
 
   function $(id) { return document.getElementById(id); }
 
   function init() {
-    var ids = ['setup', 'suVer', 'suUrl', 'suEpg', 'suProxy', 'suErr', 'fUrl', 'fEpg', 'fProxy', 'bSave', 'bCancel'];
+    var ids = ['setup', 'suVer', 'suUrl', 'suEpg', 'suProxy', 'suErr', 'fUrl', 'fEpg', 'fProxy', 'bSave', 'bUpdate', 'bCancel'];
     for (var i = 0; i < ids.length; i++) E[ids[i]] = $(ids[i]);
     E.suVer.textContent = 'Phiên bản ' + U.VERSION;
     E.setup.addEventListener('click', function (e) {
       var t = e.target;
       while (t && t !== E.setup) {
-        if (t.id && (FIELDS[t.id] || t.id === 'bSave' || t.id === 'bCancel')) {
+        if (t.id && (FIELDS[t.id] || BUTTONS[t.id])) {
           S.i = S.items.indexOf(t.id);
           if (S.i < 0) S.i = 0;
           applyFocus();
@@ -34,7 +34,7 @@
     E.suErr.textContent = '';
     S.canCancel = !!MT.prefs.playlistUrl;
     E.bCancel.classList.toggle('hide', !S.canCancel);
-    S.items = ['fUrl', 'fEpg', 'fProxy', 'bSave'].concat(S.canCancel ? ['bCancel'] : []);
+    S.items = ['fUrl', 'fEpg', 'fProxy', 'bSave', 'bUpdate'].concat(S.canCancel ? ['bCancel'] : []);
     S.i = 0;
     P.stop();
     P.setMode('off');
@@ -63,6 +63,7 @@
     var id = S.items[S.i];
     if (FIELDS[id]) E[FIELDS[id]].focus();                      // mở bàn phím ảo của TV
     else if (id === 'bSave') save();
+    else if (id === 'bUpdate') MT.update.openDialog();
     else cancel();
   }
 
@@ -82,7 +83,7 @@
   }
 
   function onKey(k) {
-    var id = S.items[S.i], onBtn = id === 'bSave' || id === 'bCancel';
+    var id = S.items[S.i], onBtn = !!BUTTONS[id];
     switch (k) {
       case 'up': move(-1); return true;
       case 'down': move(+1); return true;

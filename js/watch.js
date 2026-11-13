@@ -6,7 +6,7 @@
   'use strict';
   var MT = root.MT, U = MT.util, G = MT.guide, D = MT.data, P = MT.player;
 
-  var ROW_H = 90, VIEW_H = 1044, NBSP3 = '   ';
+  var ROW_H = 90, PANEL_PAD = 18, NBSP3 = '   ';   // PANEL_PAD: lề trên/dưới của #chView (khớp css/app.css)
   var ERR_NAMES = { 1: 'MEDIA_ERR_ABORTED', 2: 'MEDIA_ERR_NETWORK', 3: 'MEDIA_ERR_DECODE', 4: 'MEDIA_ERR_SRC_NOT_SUPPORTED' };
 
   var W = { list: [], index: 0, panel: false, pf: 0, err: null, hadInfo: false };
@@ -26,7 +26,11 @@
     var ids = ['watch', 'wSpin', 'wErr', 'infoBar', 'ibNum', 'ibLogo', 'ibName', 'ibNow', 'ibBarWrap', 'ibBar', 'ibNext',
       'ibBadges', 'ibTime', 'ibDate', 'chPanel', 'chInner'];
     for (var i = 0; i < ids.length; i++) E[ids[i]] = $(ids[i]);
-    vl = new MT.VList(E.chInner, ROW_H, VIEW_H, makeRow);
+    vl = new MT.VList(E.chInner, ROW_H, MT.layout.H - 2 * PANEL_PAD, makeRow);
+    MT.layout.on(function (L) {                     // đổi kích thước / xoay màn hình: bảng chọn kênh cao theo
+      vl.setViewH(L.H - 2 * PANEL_PAD);
+      if (visible && W.panel) vl.ensureVisible(W.pf, false, true);
+    });
 
     P.on(function (what) {
       if (!visible) return;

@@ -2,12 +2,14 @@
  * thanh thời gian và bảng kênh/chương trình ở dưới, ngăn nhóm kênh ẩn bên trái (chuyển từ BrowseScreen.kt). */
 (function (root) {
   'use strict';
-  var MT = root.MT, U = MT.util, G = MT.guide, D = MT.data, P = MT.player;
+  var MT = root.MT, U = MT.util, G = MT.guide, D = MT.data, P = MT.player, UP = MT.update;
 
-  // ---- Kích thước bảng lịch (px @1920x1080, phải khớp css/app.css) ----
-  var LEFT_W = 495, ROW_H = 87, PPM = 9.6, GUIDE_HOURS = 12, VIEW_W = 1329, VIEW_H = 652;
+  // ---- Kích thước bảng lịch (px thiết kế, phải khớp css/app.css) ----
+  var LEFT_W = 495, ROW_H = 87, PPM = 9.6, GUIDE_HOURS = 12;
+  var GUIDE_X = 48, GUIDE_TOP = 404, GUIDE_BOTTOM = 24;     // lề của #guide: trái/phải, trên, dưới
   var TOTAL_W = GUIDE_HOURS * 60 * PPM;          // 6912
-  var MAX_SX = TOTAL_W - VIEW_W;
+  // Vùng ô chương trình nhìn thấy: tính lại theo kích thước màn hình trong relayout() (1920x1080: 1329 x 652)
+  var VIEW_W = 1329, VIEW_H = 652, MAX_SX = TOTAL_W - VIEW_W;
 
   var B = {
     sel: 1,            // 0 = Yêu thích, 1 = Tất cả, 2.. = nhóm
@@ -37,11 +39,15 @@
 
   function init() {
     var ids = ['browse', 'guide', 'guideInner', 'guideEmpty', 'pvMsg', 'pvSpin', 'infoEmpty', 'infoBody', 'iTitle', 'iTime',
-      'iRange', 'iLive', 'iBar', 'iLeft', 'iChan', 'tlDate', 'tlStrip', 'tlArrow', 'drawer', 'dgQuery', 'dgSearch', 'dgList',
-      'dgRefresh', 'dgSettings', 'dgLoad', 'dgStatus', 'dgVer', 'dgErr'];
+      'iRange', 'iLive', 'iBar', 'iLeft', 'iChan', 'iUpd', 'tlDate', 'tlStrip', 'tlArrow', 'drawer', 'dgQuery', 'dgSearch',
+      'dgList', 'dgRefresh', 'dgSettings', 'dgUpdate', 'dgLoad', 'dgStatus', 'dgVer', 'dgErr'];
     for (var i = 0; i < ids.length; i++) E[ids[i]] = $(ids[i]);
     vl = new MT.VList(E.guideInner, ROW_H, VIEW_H, makeRow);
     E.dgVer.textContent = 'Phiên bản ' + U.VERSION;
+    MT.layout.on(relayout);
+    relayout(MT.layout);
+    UP.on(renderUpdate);
+    renderUpdate();
 
     D.on('channels', onChannels);
     D.on('epg', onEpg);
@@ -57,6 +63,20 @@
     E.drawer.addEventListener('click', onDrawerClick);
     E.dgQuery.addEventListener('input', function () { B.query = E.dgQuery.value; recomputeShown(); });
     updateWindow(true);
+  }
+
+  /** Cửa sổ đổi kích thước / xoay màn hình: tính lại vùng nhìn thấy của bảng lịch. */
+  function relayout(L) {
+    VIEW_W = L.W - 2 * GUIDE_X - LEFT_W;
+    VIEW_H = L.H - GUIDE_TOP - GUIDE_BOTTOM;
+    MAX_SX = Math.max(0, TOTAL_W - VIEW_W);
+    vl.setViewH(VIEW_H);
+    if (!visible) return;
+    setSx(B.sx);
+    if (B.shown.length && !B.drawer) {
+      vl.ensureVisible(B.row, false, true);
+      if (B.col >= 0) ensureColVisible();
+    }
   }
 
   /* ============================== Cửa sổ thời gian ============================== */
@@ -355,11 +375,18 @@
     E.dgErr.textContent = D.error || '';
   }
 
+  /** Nút cập nhật trong ngăn (đổi màu khi có bản mới) và dòng nhắc dưới khung thông tin, giống bản Android. */
+  function renderUpdate() {
+    E.dgUpdate.textContent = UP.label();
+    E.dgUpdate.classList.toggle('hl', UP.available());
+    E.iUpd.classList.toggle('hide', !UP.available());
+  }
+
   function drawerEl(di) {
     var g = B.counts.length;
     if (di === 0) return E.dgSearch;
     if (di <= g) return E.dgList.children[di - 1];
-    return di === g + 1 ? E.dgRefresh : E.dgSettings;
+    return di === g + 1 ? E.dgRefresh : di === g + 2 ? E.dgSettings : E.dgUpdate;
   }
 
   function applyDrawerFocus() {
@@ -404,7 +431,7 @@
   }
 
   function moveDrawer(n) {
-    var total = B.counts.length + 3;
+    var total = B.counts.length + 4;          // ô tìm kiếm + các nhóm + Làm mới, Cài đặt, Cập nhật
     n = U.clamp(n, 0, total - 1);
     if (n === B.di) return;
     B.di = n;
@@ -417,7 +444,8 @@
     if (B.di === 0) E.dgQuery.focus();
     else if (B.di <= g) closeDrawer();
     else if (B.di === g + 1) D.refresh();
-    else MT.app.go('setup');
+    else if (B.di === g + 2) MT.app.go('setup');
+    else UP.openDialog();
   }
 
   function drawerKey(k) {
@@ -533,6 +561,7 @@
     if (up(e.target, 'dg-search', E.drawer)) { E.dgQuery.focus(); return; }
     if (e.target === E.dgRefresh) D.refresh();
     else if (e.target === E.dgSettings) MT.app.go('setup');
+    else if (e.target === E.dgUpdate) UP.openDialog();
   }
 
   /* ============================== Vào / ra màn hình ============================== */

@@ -11,7 +11,7 @@
   function p2(n) { return n < 10 ? '0' + n : String(n); }
 
   var util = {
-    VERSION: '1.0.0',
+    VERSION: '1.1.0',            // phải khớp appinfo.json và <meta name="mytivi-version"> trong index.html
 
     /** Escape mọi chuỗi đến từ playlist/EPG trước khi đưa vào innerHTML. */
     esc: function (s) {

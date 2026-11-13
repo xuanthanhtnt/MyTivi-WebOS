@@ -3,7 +3,7 @@
   'use strict';
   var MT = root.MT = root.MT || {};
 
-  function xhr(url, timeout) {
+  function xhr(url, timeout, headers) {
     return new Promise(function (resolve, reject) {
       var x = new XMLHttpRequest(), done = false;
       function fail(msg, network, status) {
@@ -18,6 +18,7 @@
         x.open('GET', url, true);
         x.responseType = 'arraybuffer';
         x.timeout = timeout || 60000;
+        for (var h in headers || {}) x.setRequestHeader(h, headers[h]);
       } catch (e) { return fail('Link không hợp lệ', false); }
       x.onload = function () {
         if (x.status >= 200 && x.status < 300) { done = true; resolve(x.response); }
@@ -35,12 +36,16 @@
       : prefix + encodeURIComponent(url);
   }
 
-  /** Tải về ArrayBuffer. Lỗi mạng/CORS mà đã cấu hình proxy thì thử lại qua proxy. */
+  /**
+   * Tải về ArrayBuffer. Lỗi mạng/CORS mà đã cấu hình proxy thì thử lại qua proxy.
+   * opt: { timeout, headers, noProxy (không đi qua proxy, vd khi tải bản cập nhật từ GitHub) }
+   */
   function get(url, opt) {
-    var timeout = (opt && opt.timeout) || 60000;
-    return xhr(url, timeout).catch(function (e) {
+    opt = opt || {};
+    var timeout = opt.timeout || 60000;
+    return xhr(url, timeout, opt.headers).catch(function (e) {
       var px = MT.prefs && MT.prefs.proxy;
-      if (e.network && px) return xhr(proxify(px, url), timeout);
+      if (e.network && px && !opt.noProxy) return xhr(proxify(px, url), timeout, opt.headers);
       throw e;
     });
   }

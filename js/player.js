@@ -42,11 +42,13 @@
       };
       document.addEventListener('visibilitychange', onVis);
       document.addEventListener('webkitvisibilitychange', onVis);
+      if (MT.layout) MT.layout.on(place);          // đổi kích thước / xoay màn hình
     },
 
     setMode: function (m) {
       P.mode = m;
       el.className = m === 'pv' ? 'pv' : m === 'full' ? 'full' : 'off';
+      place();
     },
 
     play: function (url, force) {
@@ -113,6 +115,25 @@
     codecNames: codecNames,
     parseMaster: parseMaster
   };
+
+  /**
+   * Thẻ video nằm ngoài #stage nên toạ độ là px thật của cửa sổ: khung xem trước lấy đúng vị trí #pv (đã phóng/thu
+   * theo màn hình); toàn màn hình thì để CSS phủ cả cửa sổ. Không dùng transform cho video để lớp video phần cứng
+   * của TV luôn trùng khung.
+   */
+  function place() {
+    var s = el.style, pv = document.getElementById('pv');
+    if (P.mode === 'pv' && pv) {
+      var r = pv.getBoundingClientRect(), k = MT.layout ? MT.layout.k : 1;
+      s.left = Math.round(r.left) + 'px';
+      s.top = Math.round(r.top) + 'px';
+      s.width = Math.round(r.width) + 'px';
+      s.height = Math.round(r.height) + 'px';
+      s.borderRadius = Math.round(30 * k) + 'px';
+    } else {
+      s.left = s.top = s.width = s.height = s.borderRadius = '';
+    }
+  }
 
   function setState(s, code) {
     P.state = s;

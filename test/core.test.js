@@ -138,3 +138,134 @@ test('nowPlaying / nextPlaying / cellAt / tiện ích', () => {
   assert.equal(U.minutesLeft({ stop: 61000 }, 0), 2);
   assert.equal(U.progress({ start: 0, stop: 100 }, 50), 0.5);
 });
+
+/* ---------------- Cập nhật trong app (js/update.js, js/boot.js) ---------------- */
+const fs = require('node:fs');
+const vm = require('node:vm');
+const UPD = require('../js/update.js');
+const ROOT = path.join(__dirname, '..');
+const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+
+test('Cập nhật: so phiên bản, đọc Release của GitHub', () => {
+  assert.ok(UPD.cmp('1.10.0', '1.9.9') > 0);
+  assert.ok(UPD.cmp('1.1.0', '1.1.0') === 0);
+  assert.ok(UPD.cmp('1.0.9', '1.1') < 0);
+  assert.deepEqual(UPD.parseRelease({ tag_name: 'v1.2.3', body: ' Sửa lỗi \n' }), { version: '1.2.3', tag: 'v1.2.3', notes: 'Sửa lỗi' });
+  assert.equal(UPD.parseRelease({ tag_name: 'v12' }), null);       // kiểu tag của bản Android: không dùng cho webOS
+  assert.equal(UPD.parseRelease(null), null);
+});
+
+test('Phiên bản khớp nhau ở appinfo.json, index.html, js/util.js', () => {
+  const ver = JSON.parse(read('appinfo.json')).version;
+  assert.match(read('index.html'), new RegExp('<meta name="mytivi-version" content="' + ver.replace(/\./g, '\\.') + '">'));
+  assert.equal(U.VERSION, ver);
+});
+
+test('Cập nhật: đọc index.html (phần thân, CSS, danh sách mã) đúng như bản tải về sẽ đọc', () => {
+  const idx = UPD.parseIndex(read('index.html'));
+  assert.equal(idx.boot, 1);
+  assert.equal(idx.version, U.VERSION);
+  assert.deepEqual(idx.css, ['css/app.css']);
+  assert.ok(idx.body.indexOf('<div id="stage">') >= 0 && idx.body.indexOf('<video id="vid"') >= 0);
+  assert.ok(idx.body.indexOf('<!--app:') < 0);
+  assert.equal(idx.scripts[idx.scripts.length - 1], 'js/app.js');
+  for (const f of idx.css.concat(idx.scripts)) assert.ok(fs.existsSync(path.join(ROOT, f)), f);
+  // mọi file js của app đều được nạp (trừ boot.js là phần nạp mã)
+  const all = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js') && f !== 'boot.js').map(f => 'js/' + f);
+  for (const f of all) assert.ok(idx.scripts.includes(f), 'thiếu trong MT_SCRIPTS: ' + f);
+  assert.throws(() => UPD.parseIndex(read('index.html').replace('"js/app.js"', '"../x.js"')), /Đường dẫn lạ/);
+});
+
+/** Chạy js/boot.js trong môi trường giả (DOM tối thiểu + localStorage). */
+function runBoot(store, bundled) {
+  const env = { appended: [], reloaded: false, app: { innerHTML: 'BUNDLED' }, styles: [], linkRemoved: false };
+  const link = { parentNode: { removeChild() { env.linkRemoved = true; } } };
+  const document = {
+    head: { appendChild(n) { env.styles.push(n.textContent); } },
+    body: { appendChild(n) { env.appended.push(n.src); } },
+    querySelector(sel) {
+      const v = { 'mytivi-version': bundled || '1.1.0', 'mytivi-boot': '1' }[/name="([^"]+)"/.exec(sel)[1]];
+      return v ? { getAttribute: () => v } : null;
+    },
+    getElementById(id) { return id === 'app' ? env.app : id === 'appCss' ? link : null; },
+    createElement() { return {}; }
+  };
+  const window = {
+    MT_SCRIPTS: ['js/a.js', 'js/b.js'],
+    location: { reload() { env.reloaded = true; } },
+    console: { error() {} },
+    localStorage: {
+      getItem: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+      setItem: (k, v) => { store[k] = String(v); },
+      removeItem: (k) => { delete store[k]; }
+    }
+  };
+  window.window = window;
+  vm.runInNewContext(read('js/boot.js'), { window, document });
+  env.boot = window.MT_BOOT;
+  env.window = window;
+  return env;
+}
+
+const bundle = (version, code) => JSON.stringify({ api: 1, version, tag: 'v' + version, html: 'OTA ' + version, css: 'b{}', js: [{ path: 'js/x.js', code }] });
+
+test('Boot: không có bản tải về -> nạp các file trong .ipk', () => {
+  const env = runBoot({});
+  assert.deepEqual(env.appended, ['js/a.js', 'js/b.js']);
+  assert.equal(env.boot.ota, false);
+  assert.equal(env.boot.version, '1.1.0');
+});
+
+test('Boot: bản tải về mới hơn -> chạy bản đó; khởi động xong thì xóa bộ đếm lỗi', () => {
+  const store = { 'mytivi.ota': bundle('1.2.0', 'window.RAN = (window.RAN || 0) + 1;') };
+  const env = runBoot(store);
+  assert.deepEqual(env.appended, []);
+  assert.equal(env.window.RAN, 1);
+  assert.equal(env.app.innerHTML, 'OTA 1.2.0');
+  assert.deepEqual(env.styles, ['b{}']);
+  assert.ok(env.linkRemoved);
+  assert.equal(env.boot.ota, true);
+  assert.equal(env.boot.version, '1.2.0');
+  assert.equal(store['mytivi.otaTry'], '1.2.0|1');
+  env.boot.ok();
+  assert.equal(store['mytivi.otaTry'], undefined);
+});
+
+test('Boot: đã cài .ipk mới hơn bản tải về -> bỏ bản tải về', () => {
+  const store = { 'mytivi.ota': bundle('1.1.0', 'window.RAN = 1;') };
+  const env = runBoot(store, '1.1.0');
+  assert.deepEqual(env.appended, ['js/a.js', 'js/b.js']);
+  assert.equal(env.window.RAN, undefined);
+  assert.equal(store['mytivi.ota'], undefined);
+});
+
+test('Boot: bản tải về không khởi động được 2 lần liền -> lần 3 quay về bản .ipk', () => {
+  const store = { 'mytivi.ota': bundle('1.2.0', 'window.RAN = 1;') };
+  runBoot(store);                                   // lần 1: chạy nhưng không gọi ok()
+  runBoot(store);                                   // lần 2
+  assert.equal(store['mytivi.otaTry'], '1.2.0|2');
+  const env = runBoot(store);                       // lần 3: bỏ
+  assert.deepEqual(env.appended, ['js/a.js', 'js/b.js']);
+  assert.equal(store['mytivi.ota'], undefined);
+  assert.equal(store['mytivi.otaBad'], '1.2.0');
+  assert.equal(env.boot.bad, '1.2.0');
+  // tải lại đúng bản hỏng đó cũng không chạy
+  store['mytivi.ota'] = bundle('1.2.0', 'window.RAN = 1;');
+  assert.deepEqual(runBoot(store).appended, ['js/a.js', 'js/b.js']);
+});
+
+test('Boot: mã bản tải về ném lỗi -> đánh dấu hỏng và mở lại bằng bản .ipk', () => {
+  const store = { 'mytivi.ota': bundle('1.2.0', 'throw new Error("hỏng");') };
+  const env = runBoot(store);
+  assert.ok(env.reloaded);
+  assert.equal(store['mytivi.otaBad'], '1.2.0');
+  assert.equal(store['mytivi.ota'], undefined);
+});
+
+test('Boot: lưu bản tải về và báo bản đang chờ khởi động lại', () => {
+  const store = {};
+  const env = runBoot(store);
+  assert.equal(env.boot.pending(), null);
+  env.boot.store(JSON.parse(bundle('1.3.0', '')));
+  assert.equal(env.boot.pending(), '1.3.0');
+});

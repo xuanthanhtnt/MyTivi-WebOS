@@ -1,22 +1,25 @@
 # CHECKPOINT – MyTivi cho webOS TV
 
-Trạng thái: **đã hoàn tất mã + đóng gói; chưa thử trên TV thật.**
+Trạng thái: **1.1.0 – co giãn mọi màn hình + cập nhật trong app; đã phát hành lên GitHub; chưa thử trên TV thật.**
 
-Nguồn: https://github.com/xuanthanhtnt/MyTivi (Android TV, Kotlin/Compose) -> web app webOS (HTML/CSS/JS thuần).
+- Nguồn: https://github.com/xuanthanhtnt/MyTivi (Android TV, Kotlin/Compose) -> web app webOS (HTML/CSS/JS thuần).
+- Repo: https://github.com/xuanthanhtnt/MyTivi-WebOS (nhánh `main`; push là Actions build + tạo Release `v<phiên bản>`).
+- Quay lại bản trước khi sửa: `git checkout checkpoint-1.0.0`.
 
-## Đã xong và đã kiểm thử
-- Mã: js/*.js, css/app.css, index.html, appinfo.json, icon.png, largeIcon.png, tools/build_ipk.py, README.md
-- `node --test test/core.test.js`: 8/8 pass
-- `python3 test/ui_smoke.py <thư_mục_ảnh>`: 47/47 pass (Chrome headless, ảnh chụp 1920x1080)
-- `python3 tools/build_ipk.py --schema <ApplicationDescription.schema>`: appinfo hợp lệ; `dpkg-deb -I` đọc được IPK
-- Kết quả: dist/com.mytivi.webos_1.0.0_all.ipk
+## 1.1.0 (so với 1.0.0)
+- Co giãn theo cửa sổ thật thay vì đặt cứng 1920x1080 (TV Full HD chỉ cho web app 1280x720): lấp kín mọi tỉ lệ
+  (16:9, 16:10, 4:3, 21:9, StanbyME dọc), video đặt theo toạ độ thật, bảng lịch/bảng chọn kênh tính lại khi đổi kích thước.
+- Cập nhật trong app như bản Android: tự kiểm tra khi mở, nút trong ngăn nhóm kênh + Cài đặt, hộp thoại Cập nhật ngay /
+  Khởi động lại; tải mã bản mới từ GitHub (`js/update.js`), nạp khi mở app (`js/boot.js`), tự quay về bản .ipk nếu lỗi.
+- GitHub Actions `.github/workflows/build-ipk.yml`; `test/dev_server.py` để thử trên máy tính.
 
-## Giới hạn (đã ghi trong README)
-- Không có hls.js (npm registry và API GitHub bị chặn trong môi trường dựng) -> chỉ phát bằng <video> gốc của webOS.
-- ares-cli không cài được -> IPK tự đóng gói theo mã nguồn ares-cli (lib/package.js).
-- Chưa thử trên TV thật: CORS khi tải playlist/EPG (có ô Proxy), bo góc video, codec, độ trễ chuyển kênh.
-- Không có tự cập nhật qua GitHub Releases.
+## Đã kiểm thử
+- `node --test test/core.test.js`: 17/17 pass.
+- Trình duyệt (pane Claude, Chromium): 1920x1080, 1280x720, 1080x1920, 2560x1080, 1024x768, 1920x1200 – video trùng khung
+  xem trước, không tràn; ngăn nhóm, hộp thoại cập nhật, xem toàn màn hình, Cài đặt; trọn luồng cập nhật với bản giả 1.2.0.
+- `python3 tools/build_ipk.py`: kiểm tra khớp phiên bản và đóng gói được.
+- Chưa chạy lại `test/ui_smoke.py` (máy dựng không có playwright/Chrome/ffmpeg); đã thêm mục 10 kiểm tra nhiều độ phân giải.
 
 ## Việc tiếp theo (nếu cần)
-- Cài thử trên TV, báo lại lỗi cụ thể (kèm đời TV/phiên bản webOS).
-- Có thể thêm: nhập số kênh bằng phím số, hls.js dự phòng (cần lấy được thư viện).
+- Cài thử trên TV, báo lại lỗi cụ thể (kèm đời TV/phiên bản webOS), nhất là: bố cục trên TV Full HD, gọi GitHub (HTTPS) trên webOS 4.
+- Có thể thêm: nhập số kênh bằng phím số, hls.js dự phòng.

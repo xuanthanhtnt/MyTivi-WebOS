@@ -13,7 +13,13 @@
     403: 'red', 404: 'green', 405: 'yellow', 406: 'blue', 70: 'yellow'
   };
 
-  var screens = {}, cur = null, curName = null, autoStarted = false;
+  // Bố cục thiết kế: cao ít nhất 1080, rộng ít nhất 1280 "px thiết kế" (xem đầu css/app.css)
+  var BASE_H = 1080, MIN_W = 1280;
+
+  var screens = {}, cur = null, curName = null, autoStarted = false, layoutFns = [];
+
+  /** Kích thước #stage (px thiết kế) và tỉ lệ phóng ra px thật của cửa sổ. */
+  var layout = { W: 1920, H: 1080, k: 1, on: function (fn) { layoutFns.push(fn); } };
 
   function go(name, arg) {
     if (cur && cur.leave) cur.leave();
@@ -30,17 +36,25 @@
     root.close();
   }
 
-  /** Phóng/thu bố cục 1920x1080 cho vừa cửa sổ (trên TV là đúng 1920x1080 nên không cần phóng). */
+  /**
+   * Co giãn bố cục theo cửa sổ thật, lấp kín màn hình ở mọi tỉ lệ (không viền đen):
+   *  - TV 4K: cửa sổ 1920x1080 -> giữ nguyên.  TV Full HD: 1280x720 -> thu 2/3.  Màn 16:9 nào cũng là 1920x1080 px thiết kế.
+   *  - 16:10, 4:3: #stage hẹp lại (vd 1728x1080); 21:9: rộng ra (2560x1080); StanbyME xoay dọc: 1280x2276.
+   */
   function fit() {
+    var de = document.documentElement;
+    var w = root.innerWidth || de.clientWidth || 1920, h = root.innerHeight || de.clientHeight || 1080;
+    var k = Math.min(w / MIN_W, h / BASE_H);
+    if (Math.abs(k - 1) < 0.001) k = 1;
+    var W = Math.ceil(w / k - 0.01), H = Math.ceil(h / k - 0.01);
+    if (W === layout.W && H === layout.H && k === layout.k && layout.done) return;
+    layout.W = W; layout.H = H; layout.k = k; layout.done = true;
     var st = document.getElementById('stage');
-    var k = Math.min(root.innerWidth / 1920, root.innerHeight / 1080);
-    if (Math.abs(k - 1) < 0.001) {
-      st.style.transform = '';
-      st.style.left = st.style.top = '0px';
-    } else {
-      st.style.transform = 'scale(' + k + ')';
-      st.style.left = Math.round((root.innerWidth - 1920 * k) / 2) + 'px';
-      st.style.top = Math.round((root.innerHeight - 1080 * k) / 2) + 'px';
+    st.style.width = W + 'px';
+    st.style.height = H + 'px';
+    st.style.transform = st.style.webkitTransform = k === 1 ? '' : 'scale(' + k + ')';
+    for (var i = 0; i < layoutFns.length; i++) {
+      try { layoutFns[i](layout); } catch (e) { if (root.console) console.error(e); }
     }
   }
 
@@ -54,6 +68,7 @@
     }
     var k = KEYS[code];
     if (!k) return;
+    if (MT.update.dialogOpen()) { if (MT.update.onKey(k)) e.preventDefault(); return; }   // hộp thoại cập nhật đè lên trên
     if (cur && cur.onKey && cur.onKey(k, e)) e.preventDefault();
   }
 
@@ -70,7 +85,9 @@
   function start() {
     fit();
     root.addEventListener('resize', fit);
+    root.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
     MT.player.init();
+    MT.update.init();
     screens = { browse: MT.browse, watch: MT.watch, setup: MT.setup };
     for (var k in screens) screens[k].init();
     D.on('channels', autoStart);
@@ -78,9 +95,12 @@
     go(MT.prefs.playlistUrl ? 'browse' : 'setup');
     setInterval(function () { MT.browse.onTick(); MT.watch.onTick(); }, 30000);
     document.addEventListener('keydown', onKeyDown);
+    if (root.MT_BOOT) root.MT_BOOT.ok();          // khởi động xong: bản đang chạy dùng được (xem js/boot.js)
+    MT.update.check(true);                         // như bản Android: mở app là tự kiểm tra bản mới (ngầm)
   }
 
-  MT.app = { go: go, openWatch: openWatch, exit: exit, start: start, current: function () { return curName; } };
+  MT.layout = layout;
+  MT.app = { go: go, openWatch: openWatch, exit: exit, start: start, fit: fit, current: function () { return curName; } };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

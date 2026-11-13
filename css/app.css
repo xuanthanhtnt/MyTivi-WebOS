@@ -1,4 +1,8 @@
-/* MyTivi cho webOS TV – bố cục cố định 1920x1080.
+/* MyTivi cho webOS TV – bố cục co giãn theo mọi kích thước/tỉ lệ màn hình.
+ * Đơn vị px ở đây là "px thiết kế": #stage luôn cao ít nhất 1080 và rộng ít nhất 1280 px thiết kế, js/app.js phóng/thu
+ * cả khối cho vừa cửa sổ (TV Full HD: cửa sổ 1280x720, TV 4K: 1920x1080; màn 16:9 luôn là 1920x1080 px thiết kế).
+ * Màn khác 16:9 (16:10, 21:9, 4:3, StanbyME xoay dọc...) thì #stage rộng/cao thêm: mọi khối neo theo cạnh (left/right/
+ * top/bottom) nên tự giãn theo, không có viền đen.
  * Kích thước quy đổi từ bản Android (dp x 1.5): cột kênh 330dp -> 495px, hàng 58dp -> 87px, 6.4dp/phút -> 9.6px/phút.
  * Cố ý KHÔNG dùng: flex gap, inset, aspect-ratio, grid, ?. ... để chạy được trên Chromium cũ của webOS 4/5. */
 :root {
@@ -15,7 +19,7 @@ html, body {
   margin: 0; padding: 0;
   width: 100%; height: 100%;
   overflow: hidden;
-  background: #000;
+  background: var(--bg);
   color: #fff;
   font-family: "LG Smart UI", "Roboto", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   font-size: 24px;
@@ -23,25 +27,24 @@ html, body {
   cursor: default;
 }
 
+/* Trong suốt để thấy thẻ video nằm bên dưới; kích thước và tỉ lệ phóng do js/app.js đặt */
 #stage {
-  position: absolute; left: 0; top: 0;
+  position: absolute; left: 0; top: 0; z-index: 2;
   width: 1920px; height: 1080px;
   overflow: hidden;
-  background: var(--bg);
-  transform-origin: 0 0;
+  -webkit-transform-origin: 0 0; transform-origin: 0 0;
 }
 
 .hide { display: none !important; }
 .dim { color: var(--dim); }
 .err { color: var(--err); }
 
-/* ---------- Video: một thẻ duy nhất, đổi vị trí theo màn hình ---------- */
-#vid { position: absolute; z-index: 1; background: #000; display: block; }
+/* ---------- Video: một thẻ duy nhất, đổi vị trí theo màn hình ----------
+ * Toạ độ là px thật của cửa sổ (thẻ video nằm ngoài #stage). Khung xem trước: js/player.js đặt theo vị trí của #pv. */
+#vid { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 1; background: #000; display: block; }
 #vid.off { display: none; }
-#vid.pv { left: 48px; top: 24px; width: 546px; height: 307px; border-radius: 30px; }
-#vid.full { left: 0; top: 0; width: 1920px; height: 1080px; }
 
-.screen { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; z-index: 2; }
+.screen { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 #setup { background: var(--bg); }
 
 /* ---------- Vòng quay tải ---------- */
@@ -53,7 +56,7 @@ html, body {
   -webkit-animation: sp .9s linear infinite; animation: sp .9s linear infinite;
 }
 .spin.sm { display: inline-block; width: 21px; height: 21px; border-width: 3px; vertical-align: middle; }
-.spin.big { width: 66px; height: 66px; border-width: 7px; position: absolute; left: 927px; top: 507px; }
+.spin.big { width: 66px; height: 66px; border-width: 7px; position: absolute; left: 50%; top: 50%; margin: -33px 0 0 -33px; }
 @-webkit-keyframes sp { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
 @keyframes sp { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
 
@@ -67,10 +70,10 @@ html, body {
 .pv-border { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: 1.5px solid rgba(255, 255, 255, .25); border-radius: 30px; }
 .pv-msg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 24px; font-size: 24px; color: var(--dim); }
 .pv-msg.err { color: var(--err); }
-#pvSpin { position: absolute; left: 252px; top: 132px; width: 42px; height: 42px; }
+#pvSpin { position: absolute; left: 50%; top: 50%; margin: -21px 0 0 -21px; }
 
 /* ---------- Thông tin chương trình ---------- */
-#info { position: absolute; left: 630px; top: 24px; width: 1242px; height: 307px; }
+#info { position: absolute; left: 630px; right: 48px; top: 24px; height: 307px; }
 .i-empty { font-size: 24px; }
 .i-title { font-size: 38px; line-height: 46px; max-height: 92px; overflow: hidden; font-weight: 500; }
 .i-time { margin-top: 15px; font-size: 24px; display: flex; align-items: center; white-space: nowrap; }
@@ -79,12 +82,14 @@ html, body {
 .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
 .bar.wide { width: 70%; margin: 9px 0 6px 0; }
 .i-chan { margin-top: 12px; font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.i-hint { position: absolute; left: 0; bottom: 0; font-size: 20px; white-space: nowrap; }
+.i-foot { position: absolute; left: 0; right: 0; bottom: 0; }
+.i-upd { font-size: 20px; line-height: 28px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.i-hint { font-size: 20px; line-height: 28px; max-height: 56px; overflow: hidden; }   /* màn hẹp thì xuống tối đa 2 dòng */
 
 /* ---------- Thanh thời gian ---------- */
-#tl { position: absolute; left: 48px; top: 346px; width: 1824px; height: 57px; }
+#tl { position: absolute; left: 48px; right: 48px; top: 346px; height: 57px; }
 #tlDate { position: absolute; left: 12px; top: 0; width: 470px; line-height: 57px; font-size: 22px; white-space: nowrap; }
-#tlClip { position: absolute; left: 495px; top: 0; width: 1329px; height: 57px; overflow: hidden; }
+#tlClip { position: absolute; left: 495px; right: 0; top: 0; height: 57px; overflow: hidden; }
 #tlStrip { position: absolute; left: 0; top: 0; width: 6912px; height: 100%; -webkit-transition: -webkit-transform .12s ease-out; transition: transform .12s ease-out; }
 .tlh { position: absolute; top: 0; width: 288px; padding-left: 9px; font-size: 22px; line-height: 51px; }
 #tlArrow {
@@ -92,10 +97,10 @@ html, body {
   border-left: 11px solid transparent; border-right: 11px solid transparent; border-top: 12px solid var(--accent);
   -webkit-transition: -webkit-transform .12s ease-out; transition: transform .12s ease-out;
 }
-#tlLine { position: absolute; left: 48px; top: 403px; width: 1824px; height: 1px; background: rgba(255, 255, 255, .2); }
+#tlLine { position: absolute; left: 48px; right: 48px; top: 403px; height: 1px; background: rgba(255, 255, 255, .2); }
 
-/* ---------- Bảng kênh + chương trình ---------- */
-#guide { position: absolute; left: 48px; top: 404px; width: 1824px; height: 652px; overflow: hidden; }
+/* ---------- Bảng kênh + chương trình (phải khớp GUIDE_* ở đầu js/browse.js) ---------- */
+#guide { position: absolute; left: 48px; right: 48px; top: 404px; bottom: 24px; overflow: hidden; }
 #guideInner { position: absolute; left: 0; top: 0; width: 100%; -webkit-transition: -webkit-transform .12s ease-out; transition: transform .12s ease-out; }
 #guideEmpty { position: absolute; left: 0; top: 0; padding: 36px; font-size: 24px; }
 
@@ -124,7 +129,7 @@ html, body {
 
 /* ---------- Ngăn nhóm kênh ---------- */
 #drawer {
-  position: absolute; left: 0; top: 0; width: 480px; height: 1080px; z-index: 5;
+  position: absolute; left: 0; top: 0; width: 480px; height: 100%; z-index: 5;
   background: rgba(9, 18, 32, .97);
   padding: 30px 24px;
   display: flex; flex-direction: column;
@@ -150,7 +155,7 @@ html, body {
 #dgErr { white-space: normal; max-height: 54px; }
 
 /* ---------- Xem toàn màn hình ---------- */
-.w-err { position: absolute; left: 50%; top: 50%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%); background: rgba(0, 0, 0, .8); color: var(--err); padding: 36px; font-size: 28px; max-width: 1400px; text-align: center; }
+.w-err { position: absolute; left: 50%; top: 50%; -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%); background: rgba(0, 0, 0, .8); color: var(--err); padding: 36px; font-size: 28px; max-width: 80%; text-align: center; }
 
 .infobar {
   position: absolute; left: 0; bottom: 0; width: 100%;
@@ -177,8 +182,9 @@ html, body {
 .ib-time { font-size: 60px; font-weight: 300; }
 .ib-clock .dim { font-size: 21px; }
 
-.ch-panel { position: absolute; left: 0; top: 0; width: 660px; height: 1080px; background: rgba(11, 18, 32, .92); padding: 18px; }
-#chView { position: relative; width: 624px; height: 1044px; overflow: hidden; }
+/* Phải khớp PANEL_PAD ở đầu js/watch.js */
+.ch-panel { position: absolute; left: 0; top: 0; width: 660px; height: 100%; background: rgba(11, 18, 32, .92); }
+#chView { position: absolute; left: 18px; right: 18px; top: 18px; bottom: 18px; overflow: hidden; }
 #chInner { position: absolute; left: 0; top: 0; width: 100%; -webkit-transition: -webkit-transform .12s ease-out; transition: transform .12s ease-out; }
 .pr { position: absolute; left: 0; width: 100%; height: 90px; display: flex; align-items: center; padding: 0 15px; border-radius: 12px; }
 .pr .pn { width: 66px; flex: none; color: var(--dim); font-size: 24px; }
@@ -192,7 +198,7 @@ html, body {
 .su h1 { margin: 0; font-size: 48px; font-weight: 500; }
 .su-ver { font-size: 20px; margin-top: 6px; }
 .su-sub { margin: 12px 0 27px 0; font-size: 24px; }
-.field { width: 1100px; margin-bottom: 18px; padding: 12px 18px 15px 18px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .25); }
+.field { width: 1100px; max-width: 100%; margin-bottom: 18px; padding: 12px 18px 15px 18px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .25); }
 .field label { display: block; font-size: 20px; color: var(--dim); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .field input { width: 100%; background: transparent; border: 0; outline: 0; color: #fff; font-size: 27px; padding: 3px 0; font-family: inherit; }
 .field.focus { border-color: var(--accent); }
@@ -200,3 +206,22 @@ html, body {
 .su-btns { display: flex; margin-top: 6px; }
 .btn { font-size: 26px; padding: 15px 42px; border-radius: 12px; margin: 0 12px; }
 .su-note { margin-top: 36px; font-size: 20px; }
+
+/* ---------- Hộp thoại cập nhật ---------- */
+.upd { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 10; background: rgba(0, 0, 0, .6); }
+.upd-box {
+  position: absolute; left: 50%; top: 50%; width: 840px; margin-left: -420px;
+  -webkit-transform: translate(0, -50%); transform: translate(0, -50%);
+  background: #0F1A2E; border-radius: 24px; padding: 42px;
+}
+.upd-title { font-size: 36px; font-weight: 500; }
+.upd-cur { font-size: 21px; margin-top: 3px; }
+.upd-body { margin-top: 27px; font-size: 26px; line-height: 36px; }
+.upd-body .hl { color: var(--accent); font-size: 28px; }
+.upd-body .notes { color: var(--dim); font-size: 22px; line-height: 31px; margin-top: 12px; max-height: 248px; overflow: hidden; white-space: pre-line; }
+.upd-body .small { color: var(--dim); font-size: 21px; line-height: 30px; margin-top: 9px; }
+.upd-body .spin.sm { margin-right: 15px; }
+.upd-body .bar.wide { width: 100%; margin: 18px 0 0 0; height: 8px; }
+.upd-btns { display: flex; margin-top: 33px; }
+.upd-btns .btn { margin: 0 18px 0 0; padding: 15px 30px; }
+.dg-btn.hl { color: var(--accent); }

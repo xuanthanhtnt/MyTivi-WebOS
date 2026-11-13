@@ -32,6 +32,17 @@ def validate(appinfo, schema_path):
     for k in ('main', 'icon', 'largeIcon'):
         if k in appinfo and not os.path.isfile(os.path.join(ROOT, appinfo[k])):
             fail('thiếu file "%s" khai báo trong appinfo.json' % appinfo[k])
+    # Cập nhật trong app so phiên bản ở 3 nơi này, nên chúng phải khớp nhau
+    ver = appinfo.get('version', '1.0.0')
+    html = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    util = open(os.path.join(ROOT, 'js', 'util.js'), encoding='utf-8').read()
+    if '<meta name="mytivi-version" content="%s">' % ver not in html:
+        fail('index.html: <meta name="mytivi-version"> phải là %s (giống appinfo.json)' % ver)
+    if "VERSION: '%s'" % ver not in util:
+        fail("js/util.js: VERSION phải là '%s' (giống appinfo.json)" % ver)
+    for src in re.findall(r'"(js/[^"]+\.js)"', html):
+        if not os.path.isfile(os.path.join(ROOT, src)):
+            fail('index.html liệt kê file không có: ' + src)
     if schema_path:
         try:
             import jsonschema
